@@ -3,7 +3,7 @@
 
   <groupId>org.dyn4j</groupId>
   <artifactId>dyn4j</artifactId>
-  <version>3.2.5</version>
+  <version>3.3.0</version>
 
   <name>dyn4j</name>
   <url>http://www.dyn4j.org</url>
@@ -26,10 +26,10 @@
     <dyn4j.maven-deploy-plugin.version>2.8.2</dyn4j.maven-deploy-plugin.version>
     <dyn4j.maven-install-plugin.version>2.5.2</dyn4j.maven-install-plugin.version>
     <dyn4j.maven-compiler-plugin.version>3.7.0</dyn4j.maven-compiler-plugin.version>
-    <dyn4j.maven-surefire-plugin.version>2.19.1</dyn4j.maven-surefire-plugin.version>
+    <dyn4j.maven-surefire-plugin.version>2.21.0</dyn4j.maven-surefire-plugin.version>
     <dyn4j.maven-source-plugin.version>3.0.1</dyn4j.maven-source-plugin.version>
     <dyn4j.maven-bundle-plugin.version>3.3.0</dyn4j.maven-bundle-plugin.version>
-    <dyn4j.maven-javadoc-plugin.version>3.0.0-M1</dyn4j.maven-javadoc-plugin.version>
+    <dyn4j.maven-javadoc-plugin.version>3.0.0</dyn4j.maven-javadoc-plugin.version>
     <dyn4j.nexus-staging-maven-plugin.version>1.6.8</dyn4j.nexus-staging-maven-plugin.version>
     <dyn4j.maven-gpg-plugin.version>1.6</dyn4j.maven-gpg-plugin.version>
     <dyn4j.maven-enforcer-plugin.version>3.0.0-M1</dyn4j.maven-enforcer-plugin.version>
@@ -94,6 +94,9 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-deploy-plugin</artifactId>
           <version>${dyn4j.maven-deploy-plugin.version}</version>
+          <configuration>
+          	<skip>true</skip>
+          </configuration>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -136,9 +139,6 @@
 
             <execution>
               <id>default-compile</id>
-              <configuration>
-                <release>9</release>
-              </configuration>
             </execution>
 
             <!--
@@ -155,13 +155,14 @@
                 <excludes>
                   <exclude>module-info.java</exclude>
                 </excludes>
+                <release>6</release>
               </configuration>
             </execution>
           </executions>
 
           <!-- These are the default settings for all executions. -->
           <configuration>
-            <release>6</release>
+            <release>9</release>
           </configuration>
         </plugin>
 
@@ -228,7 +229,8 @@
           		<manifest>
           			<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
           			<addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
-          			<addExtensions>true</addExtensions>
+          			<!-- this is so that hamcrest and junit aren't added to the manifest -->
+          			<addExtensions>false</addExtensions>
           			<mainClass>org.dyn4j.Version</mainClass>
           		</manifest>
           		<manifestEntries>
@@ -244,6 +246,8 @@
               <Implementation-Vendor>dyn4j.org</Implementation-Vendor>
               <Implementation-Vendor-Id>${project.groupId}</Implementation-Vendor-Id>
               <Bundle-DocURL>${project.url}</Bundle-DocURL>
+              <!-- override the JavaSE version to 1.6 -->
+              <Require-Capability><![CDATA[osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.6))"]]></Require-Capability>
             </instructions>
           </configuration>
 
@@ -274,6 +278,9 @@
                 <goal>jar</goal>
               </goals>
               <configuration>
+                <sourceFileExcludes>
+                	<sourceFileExclude>module-info.java</sourceFileExclude>
+                </sourceFileExcludes>
                 <archive>
                   <manifestEntries>
                     <Specification-Title>${project.name}</Specification-Title>
@@ -384,11 +391,9 @@
                 <id>sign-artifacts</id>
                 <phase>verify</phase>
                 <configuration>
-	                <gpgArguments>
-	                    <arg>--pinentry-mode</arg>
-	                    <arg>loopback</arg>
-	                </gpgArguments>
-	              </configuration>
+                  <keyname>${gpg.keyname}</keyname>
+                  <passphraseServerId>${gpg.keyserver}</passphraseServerId>
+              	</configuration>
                 <goals>
                   <goal>sign</goal>
                 </goals>
@@ -427,6 +432,11 @@
                 <goals>
                   <goal>deploy</goal>
                 </goals>
+                <configuration>
+                	<nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                	<serverId>${nexus.server}</serverId>
+                	<autoReleaseAfterClose>false</autoReleaseAfterClose>
+                </configuration>
               </execution>
             </executions>
           </plugin>
@@ -434,4 +444,12 @@
       </build>
     </profile>
   </profiles>
+  <dependencies>
+  	<dependency>
+  		<groupId>junit</groupId>
+  		<artifactId>junit</artifactId>
+  		<version>4.12</version>
+  		<scope>test</scope>
+  	</dependency>
+  </dependencies>
 </project>

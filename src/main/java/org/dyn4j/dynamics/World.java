@@ -62,10 +62,9 @@ import org.dyn4j.dynamics.contact.ContactConstraintSolver;
 import org.dyn4j.dynamics.contact.ContactListener;
 import org.dyn4j.dynamics.contact.ContactManager;
 import org.dyn4j.dynamics.contact.ContactPoint;
-import org.dyn4j.dynamics.contact.ContactPointId;
+import org.dyn4j.dynamics.contact.DefaultContactManager;
 import org.dyn4j.dynamics.contact.SequentialImpulses;
 import org.dyn4j.dynamics.contact.TimeOfImpactSolver;
-import org.dyn4j.dynamics.contact.WarmStartingContactManager;
 import org.dyn4j.dynamics.joint.Joint;
 import org.dyn4j.geometry.AABB;
 import org.dyn4j.geometry.Convex;
@@ -87,7 +86,7 @@ import org.dyn4j.resources.Messages;
  * there are multiple {@link CollisionListener}s and <b>any</b> one of them returns false for an event, the collision is skipped.  However,
  * all listeners will still be called no matter if the first returned false.
  * @author William Bittle
- * @version 3.2.5
+ * @version 3.3.0
  * @since 1.0.0
  */
 public class World implements Shiftable, DataContainer {
@@ -163,8 +162,6 @@ public class World implements Shiftable, DataContainer {
 	
 	/** The {@link Body} list */
 	private final List<Body> bodies;
-
-	private final List<Body> informPostNarrowBodies;
 	
 	/** The {@link Joint} list */
 	private final List<Joint> joints;
@@ -253,12 +250,11 @@ public class World implements Shiftable, DataContainer {
 		this.timeOfImpactDetector = new ConservativeAdvancement();
 		this.raycastDetector = new Gjk();
 		this.coefficientMixer = CoefficientMixer.DEFAULT_MIXER;
-		this.contactManager = new WarmStartingContactManager(initialCapacity);
+		this.contactManager = new DefaultContactManager(initialCapacity);
 		this.contactConstraintSolver = new SequentialImpulses();
 		this.timeOfImpactSolver = new TimeOfImpactSolver();
 		
 		this.bodies = new ArrayList<Body>(initialCapacity.getBodyCount());
-		this.informPostNarrowBodies = new ArrayList<Body>(initialCapacity.getBodyCount());
 		this.joints = new ArrayList<Joint>(initialCapacity.getJointCount());
 		this.listeners = new ArrayList<Listener>(initialCapacity.getListenerCount());
 		
@@ -720,15 +716,10 @@ public class World implements Shiftable, DataContainer {
 
 		onStartBodiesLoop();
 
-		this.informPostNarrowBodies.clear();
-
 		for (int i = 0; i < size; i++) {
 			Body body = this.bodies.get(i);
 			// skip if already not active
 			if (!body.isActive()) continue;
-			if (body.isInformPostNarrow()) {
-				this.informPostNarrowBodies.add(body);
-			}
 			// clear all the old contacts
 			body.contacts.clear();
 			// check if bounds have been set
@@ -2932,15 +2923,7 @@ public class World implements Shiftable, DataContainer {
 					// get the contact
 					Contact contact = contacts.get(j);
 					// create a contact point for notification
-					ContactPoint contactPoint = new ContactPoint(
-							new ContactPointId(contactConstraint.getId(), contact.getId()),
-							contactConstraint.getBody1(), 
-							contactConstraint.getFixture1(), 
-							contactConstraint.getBody2(), 
-							contactConstraint.getFixture2(),
-							contact.getPoint(), 
-							contactConstraint.getNormal(), 
-							contact.getDepth());
+					ContactPoint contactPoint = new ContactPoint(contactConstraint, contact);
 					// call the destruction listeners
 					if (notify) {
 						for (DestructionListener dl : listeners) {
@@ -3087,15 +3070,7 @@ public class World implements Shiftable, DataContainer {
 					for (int j = 0; j < csize; j++) {
 						Contact contact = contacts.get(j);
 						// create a contact point for notification
-						ContactPoint contactPoint = new ContactPoint(
-								new ContactPointId(contactConstraint.getId(), contact.getId()),
-								contactConstraint.getBody1(), 
-								contactConstraint.getFixture1(), 
-								contactConstraint.getBody2(), 
-								contactConstraint.getFixture2(),
-								contact.getPoint(), 
-								contactConstraint.getNormal(), 
-								contact.getDepth());
+						ContactPoint contactPoint = new ContactPoint(contactConstraint, contact);
 						// call the destruction listeners
 						for (DestructionListener dl : listeners) {
 							dl.destroyed(contactPoint);
@@ -3695,7 +3670,7 @@ public class World implements Shiftable, DataContainer {
 	 * Changing the contact manager requires an update to be performed on the next update of this
 	 * world and any cached information will be lost.
 	 * <p>
-	 * The default is the {@link WarmStartingContactManager}.
+	 * The default is the {@link DefaultContactManager}.
 	 * @param contactManager the contact manager
 	 * @throws NullPointerException if contactManager is null
 	 * @see ContactManager
