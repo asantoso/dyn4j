@@ -250,7 +250,11 @@ public class Body extends AbstractCollidable<BodyFixture> implements Collidable<
 	public BodyFixture addFixture(Convex convex) {
 		return this.addFixture(convex, BodyFixture.DEFAULT_DENSITY, BodyFixture.DEFAULT_FRICTION, BodyFixture.DEFAULT_RESTITUTION);
 	}
-	
+
+	public boolean isInformPostNarrow() { return false; }
+	public void onPreUpdate() {}
+	public void onPostNarrowPhase() {}
+
 	/**
 	 * Creates a {@link BodyFixture} for the given {@link Convex} {@link Shape},
 	 * adds it to the {@link Body}, and returns it for configuration.

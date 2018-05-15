@@ -163,6 +163,8 @@ public class World implements Shiftable, DataContainer {
 	
 	/** The {@link Body} list */
 	private final List<Body> bodies;
+
+	private final List<Body> informPostNarrowBodies;
 	
 	/** The {@link Joint} list */
 	private final List<Joint> joints;
@@ -256,6 +258,7 @@ public class World implements Shiftable, DataContainer {
 		this.timeOfImpactSolver = new TimeOfImpactSolver();
 		
 		this.bodies = new ArrayList<Body>(initialCapacity.getBodyCount());
+		this.informPostNarrowBodies = new ArrayList<Body>(initialCapacity.getBodyCount());
 		this.joints = new ArrayList<Joint>(initialCapacity.getJointCount());
 		this.listeners = new ArrayList<Listener>(initialCapacity.getListenerCount());
 		
@@ -672,7 +675,15 @@ public class World implements Shiftable, DataContainer {
 			sl.end(this.step, this);
 		}
 	}
-	
+
+	protected long mStartLoopMillis = 0;
+	protected void onStartBodiesLoop() {
+		mStartLoopMillis = System.nanoTime();
+	}
+
+	protected void onEndBodiesLoop(long startNanos) {
+	}
+
 	/**
 	 * Finds new contacts for all bodies in this world.
 	 * <p>
@@ -706,10 +717,18 @@ public class World implements Shiftable, DataContainer {
 		// test for out of bounds objects
 		// clear the body contacts
 		// update the broadphase
+
+		onStartBodiesLoop();
+
+		this.informPostNarrowBodies.clear();
+
 		for (int i = 0; i < size; i++) {
 			Body body = this.bodies.get(i);
 			// skip if already not active
 			if (!body.isActive()) continue;
+			if (body.isInformPostNarrow()) {
+				this.informPostNarrowBodies.add(body);
+			}
 			// clear all the old contacts
 			body.contacts.clear();
 			// check if bounds have been set
@@ -723,9 +742,12 @@ public class World implements Shiftable, DataContainer {
 					bl.outside(body);
 				}
 			}
+			body.onPreUpdate();
 			// update the broadphase with the new position/orientation
 			this.broadphaseDetector.update(body);
 		}
+
+		onEndBodiesLoop(mStartLoopMillis);
 		
 		// make sure there are some bodies
 		if (size > 0) {
@@ -838,6 +860,13 @@ public class World implements Shiftable, DataContainer {
 					}
 				}
 			}
+		}
+
+		size = this.informPostNarrowBodies.size();
+		for (int i = 0; i < size; i++) {
+			Body body = this.informPostNarrowBodies.get(i);
+			// skip if already not active
+			body.onPostNarrowPhase();
 		}
 		
 		// warm start the contact constraints
