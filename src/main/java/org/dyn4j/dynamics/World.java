@@ -162,7 +162,9 @@ public class World implements Shiftable, DataContainer {
 	
 	/** The {@link Body} list */
 	private final List<Body> bodies;
-	
+
+	private final List<Body> informPostNarrowBodies;
+
 	/** The {@link Joint} list */
 	private final List<Joint> joints;
 	
@@ -255,6 +257,7 @@ public class World implements Shiftable, DataContainer {
 		this.timeOfImpactSolver = new TimeOfImpactSolver();
 		
 		this.bodies = new ArrayList<Body>(initialCapacity.getBodyCount());
+		this.informPostNarrowBodies = new ArrayList<Body>(initialCapacity.getBodyCount());
 		this.joints = new ArrayList<Joint>(initialCapacity.getJointCount());
 		this.listeners = new ArrayList<Listener>(initialCapacity.getListenerCount());
 		
@@ -716,10 +719,15 @@ public class World implements Shiftable, DataContainer {
 
 		onStartBodiesLoop();
 
+		informPostNarrowBodies.clear();
+
 		for (int i = 0; i < size; i++) {
 			Body body = this.bodies.get(i);
 			// skip if already not active
 			if (!body.isActive()) continue;
+			if (body.isInformPostNarrow()) {
+				informPostNarrowBodies.add(body);
+			}
 			// clear all the old contacts
 			body.contacts.clear();
 			// check if bounds have been set
